@@ -85,7 +85,7 @@ const ShiftHistory: React.FC = () => {
 
     try {
       // 1. קריאה לשרת הפייתון כדי לחשב מחדש את פירוט השעות היומי המעודכן
-      const response = await fetch('http://127.0.0.1:8000/api/calculate-shift', {
+      const response = await fetch('https://salary-app-4npn.onrender.com/api/calculate-shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

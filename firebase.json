@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "frontend/dist",
+    "public": "salary app/dist",
     "ignore": [
       "firebase.json",
       "**/.*",

@@ -53,7 +53,7 @@ const MonthlySummary: React.FC = () => {
       });
 
       // שליחת כל נתוני החוזה הגלובלי האישיים של המשתמש ל-API
-      const response = await fetch('http://127.0.0.1:8000/api/calculate-monthly-net', {
+      const response = await fetch('https://salary-app-4npn.onrender.com/api/calculate-monthly-net', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

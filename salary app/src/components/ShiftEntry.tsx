@@ -17,7 +17,7 @@ const ShiftEntry: React.FC = () => {
 
     try {
       // קריאה לשרת הפייתון לחישוב שעות וסיווגן (לשמירה במסד הנתונים)
-      const response = await fetch('http://127.0.0.1:8000/api/calculate-shift', {
+      const response = await fetch('https://salary-app-4npn.onrender.com/api/calculate-shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
