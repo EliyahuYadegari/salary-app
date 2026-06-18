@@ -2,8 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
+// הגדרת המבנה המפורש של ההגדרות עבור TypeScript (כדי למנוע שגיאות סוגי נתונים)
+interface SettingsState {
+  globalBaseHours: string | number;
+  globalBaseSalary: string | number;
+  globalOtHours: string | number;
+  globalOtSalary: string | number;
+  extraOtHourlyRate: string | number;
+  creditPoints: number;
+  pensionRate: number;
+  travelExpenses: number;
+  studyFundRate: number;
+}
+
 const Settings: React.FC = () => {
-  const [settings, setSettings] = useState({
+  // שימוש ב-Interface שהגדרנו
+  const [settings, setSettings] = useState<SettingsState>({
     globalBaseHours: '',
     globalBaseSalary: '',
     globalOtHours: '',
@@ -12,7 +26,7 @@ const Settings: React.FC = () => {
     creditPoints: 2.25,
     pensionRate: 6,
     travelExpenses: 300,
-    studyFundRate: 0 // ברירת מחדל 0%
+    studyFundRate: 0 
   });
 
   useEffect(() => {
@@ -58,7 +72,7 @@ const Settings: React.FC = () => {
       <label>תשלום קבוע עבור השעות הנוספות הגלובליות (₪):</label>
       <input type="number" placeholder="טרם הוגדר" value={settings.globalOtSalary} onChange={(e) => setSettings({...settings, globalOtSalary: e.target.value === '' ? '' : Number(e.target.value)})} style={inputStyle} />
       
-      <label>תעריף לכל שעה נוספת מעבר לחוזה (₪):</label>
+      <label>תעריף לכל שעה חריגה מעבר לחוזה (₪):</label>
       <input type="number" placeholder="טרם הוגדר" value={settings.extraOtHourlyRate} onChange={(e) => setSettings({...settings, extraOtHourlyRate: e.target.value === '' ? '' : Number(e.target.value)})} style={inputStyle} />
       
       <hr style={{ border: '1px solid #edf2f7', margin: '15px 0' }} />
