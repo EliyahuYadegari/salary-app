@@ -83,7 +83,7 @@ const Settings: React.FC = () => {
       <label>אחוז הפרשת פנסיה עובד (%):</label>
       <input type="number" value={settings.pensionRate} onChange={(e) => setSettings({...settings, pensionRate: Number(e.target.value)})} style={inputStyle} />
 
-      <label style={{ fontWeight: 'bold', color: '#38a169' }}>אחוז הפרשת קרן השתלמות עובד (%):</label>
+      <label>אחוז הפרשת קרן השתלמות עובד (%):</label>
       <input type="number" step="0.5" value={settings.studyFundRate} onChange={(e) => setSettings({...settings, studyFundRate: Number(e.target.value)})} style={inputStyle} />
       
       <label>החזר נסיעות חודשי קבוע (₪):</label>

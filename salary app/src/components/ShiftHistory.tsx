@@ -80,7 +80,7 @@ const ShiftHistory: React.FC = () => {
     if (!auth.currentUser) return;
 
     try {
-      const response = await fetch('https://salary-app-api.onrender.com/api/calculate-shift', {
+      const response = await fetch('https://salary-app-4npn.onrender.com/api/calculate-shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ start_time: editStart, end_time: editEnd, is_weekend_or_holiday: false }),

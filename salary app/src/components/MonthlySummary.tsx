@@ -45,7 +45,6 @@ const MonthlySummary: React.FC = () => {
         }
       });
 
-      // המרה בטוחה של ערכים ריקים ל-0 עבור החישוב
       const baseHours = Number(settings.globalBaseHours) || 0;
       const otHours = Number(settings.globalOtHours) || 0;
       const totalContractHours = baseHours + otHours;
@@ -56,7 +55,8 @@ const MonthlySummary: React.FC = () => {
         currentMonthName: monthName
       });
 
-      const response = await fetch('https://salary-app-api.onrender.com/api/calculate-monthly-net', {
+      // קריאה לשרת ה-API האמיתי שלך ב-Render
+      const response = await fetch('https://salary-app-4npn.onrender.com/api/calculate-monthly-net', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,6 +79,7 @@ const MonthlySummary: React.FC = () => {
       console.error("Error calculating global salary:", error);
       alert("אירעה שגיאה בחישוב תלוש השכר הגלובלי.");
     } finally {
+      document.body.style.cursor = 'default';
       setLoading(false);
     }
   };
@@ -120,7 +121,7 @@ const MonthlySummary: React.FC = () => {
               <span>{summaryData.contractLimitHours} שעות</span>
             </div>
             <div style={rowStyle}>
-              <span>שעות נוספות לתשלום נוסף:</span>
+              <span>שעות חריגות לתשלום נוסף:</span>
               <span style={{ color: salaryResult.extra_hours > 0 ? '#dd6b20' : '#4a5568', fontWeight: 'bold' }}>
                 {salaryResult.extra_hours} שעות
               </span>
@@ -135,7 +136,7 @@ const MonthlySummary: React.FC = () => {
             </div>
             {salaryResult.extra_hours_pay > 0 && (
               <div style={rowStyle}>
-                <span>מתוכם תשלום שעות נוספות:</span>
+                <span>מתוכם תשלום שעות חריגות:</span>
                 <span style={{ color: '#38a169', fontWeight: 'bold' }}>+{salaryResult.extra_hours_pay} ₪</span>
               </div>
             )}
@@ -155,12 +156,14 @@ const MonthlySummary: React.FC = () => {
               <span>הפרשת פנסיה עובד (משכר בסיס):</span>
               <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.pension} ₪</span>
             </div>
-            {salaryResult.deductions.study_fund > 0 && (
-              <div style={rowStyle}>
-                <span>הפרשת קרן השתלמות עובד:</span>
-                <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.study_fund} ₪</span>
-              </div>
-            )}
+            
+            {/* הצגת שורת קרן ההשתלמות בצורה קבועה ובטוחה (ללא תנאי סינון חוסם) */}
+            <div style={rowStyle}>
+              <span>הפרשת קרן השתלמות עובד:</span>
+              <span style={{ color: '#e53e3e', direction: 'ltr' }}>
+                -{salaryResult.deductions?.study_fund !== undefined ? salaryResult.deductions.study_fund : 0} ₪
+              </span>
+            </div>
           </div>
 
           <button 
