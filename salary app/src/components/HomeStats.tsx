@@ -8,7 +8,7 @@ const HomeStats: React.FC = () => {
     monthTotal: 0,
     monthOvertime: 0,
     remainingHours: 0,
-    targetHours: 190
+    targetHours: 0
   });
 
   useEffect(() => {
@@ -19,9 +19,9 @@ const HomeStats: React.FC = () => {
       const userDocSnap = await getDoc(userDocRef);
       const userSettings = userDocSnap.data()?.settings || {};
       
-      // סך שעות החוזה המלאות (בסיס + נוספות גלובליות)
-      const baseHours = userSettings.globalBaseHours || 182;
-      const otHours = userSettings.globalOtHours || 8;
+      // המרה בטוחה לטיפול בשדות ריקים של משתמש חדש
+      const baseHours = Number(userSettings.globalBaseHours) || 0;
+      const otHours = Number(userSettings.globalOtHours) || 0;
       const totalContractTarget = baseHours + otHours; 
 
       const today = new Date().toISOString().split('T')[0];
@@ -47,15 +47,14 @@ const HomeStats: React.FC = () => {
         }
       });
 
-      // חישוב שעות חריגות מעבר לכל תקרת החוזה הגלובלי
       const monthOvertime = Math.max(0, monthTotal - totalContractTarget);
       const remainingHours = Math.max(0, totalContractTarget - monthTotal);
 
       setStats({
         todayHours: Number(todayHours.toFixed(2)),
         monthTotal: Number(monthTotal.toFixed(2)),
-        monthOvertime: Number(monthOvertime.toFixed(2)),
-        remainingHours: Number(remainingHours.toFixed(2)),
+        monthOvertime: totalContractTarget > 0 ? Number(monthOvertime.toFixed(2)) : 0,
+        remainingHours: totalContractTarget > 0 ? Number(remainingHours.toFixed(2)) : 0,
         targetHours: totalContractTarget
       });
     };
@@ -78,7 +77,7 @@ const HomeStats: React.FC = () => {
     <div style={{ marginBottom: '25px' }}>
       <h3 style={{ color: '#2d3748', marginBottom: '5px' }}>תמונת מצב - החודש הנוכחי</h3>
       <p style={{ fontSize: '14px', color: '#718096', margin: '0 0 15px 0' }}>
-        מכסת שעות החוזה: {stats.targetHours} שעות
+        מכסת שעות החוזה: {stats.targetHours > 0 ? `${stats.targetHours} שעות` : 'טרם הוגדרו הגדרות חוזה'}
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
         <div style={cardStyle}>
@@ -90,7 +89,7 @@ const HomeStats: React.FC = () => {
           <h2 style={{ margin: 0, color: '#2b6cb0' }}>{stats.monthTotal}</h2>
         </div>
         <div style={cardStyle}>
-          <h5 style={{ margin: '0 0 5px 0', color: '#718096', fontWeight: 'normal' }}>שעות חריגות</h5>
+          <h5 style={{ margin: '0 0 5px 0', color: '#718096', fontWeight: 'normal' }}>שעות נוספות</h5>
           <h2 style={{ margin: 0, color: '#dd6b20' }}>{stats.monthOvertime}</h2>
         </div>
         <div style={cardStyle}>

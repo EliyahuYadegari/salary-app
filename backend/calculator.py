@@ -71,7 +71,6 @@ def calculate_bituach_leumi(gross_salary: float) -> dict:
         "total": health_tax + national_insurance
     }
 
-# הפונקציה החדשה והמעודכנת למודל הגלובלי המשולב
 def calculate_monthly_salary(
     total_hours: float,
     global_base_hours: float,
@@ -81,31 +80,32 @@ def calculate_monthly_salary(
     extra_ot_hourly_rate: float,
     credit_points: float,
     pension_rate: float,
-    travel_expenses: float
+    travel_expenses: float,
+    study_fund_rate: float
 ) -> dict:
     
-    # 1. שכר חוזה קבוע בסיסי (שכר בסיס + רכיב שעות נוספות גלובליות המשולמות קבוע)
+    # שכר חוזה קבוע בסיסי
     contract_base_gross = global_base_salary + global_ot_salary
     
-    # 2. חישוב מכסת שעות מקסימלית של החוזה (למשל 182 + 8 = 190 שעות)
+    # חישוב מכסת שעות מקסימלית של החוזה
     total_contract_hours = global_base_hours + global_ot_hours
     
-    # 3. חישוב שעות חריגות מעבר למכסה הכללית ותגמולן לפי התעריף השעתי הדינמי
+    # חישוב שעות נוספות מעבר למכסה
     extra_hours = max(0.0, total_hours - total_contract_hours)
     extra_hours_pay = extra_hours * extra_ot_hourly_rate
     
-    # סך שכר הברוטו לפני נסיעות
     work_gross = contract_base_gross + extra_hours_pay
     total_gross = work_gross + travel_expenses
     
-    # 4. ניכוי מסים והפרשות סוציאליות
+    # ניכוי מסים
     tax = calculate_income_tax(total_gross, credit_points)
     btl_data = calculate_bituach_leumi(total_gross)
     
-    # פנסיה מחושבת על פי חוק לרוב משכר הבסיס בלבד (ללא רכיבי שעות נוספות)
+    # הפרשות סוציאליות מעובד (מחושב משכר הבסיס)
     pension_deduction = global_base_salary * (pension_rate / 100.0)
+    study_fund_deduction = global_base_salary * (study_fund_rate / 100.0)
     
-    total_deductions = tax + btl_data["total"] + pension_deduction
+    total_deductions = tax + btl_data["total"] + pension_deduction + study_fund_deduction
     net_salary = total_gross - total_deductions
     
     return {
@@ -117,6 +117,7 @@ def calculate_monthly_salary(
             "income_tax": round(tax, 2),
             "national_insurance": round(btl_data["national_insurance"], 2),
             "health_tax": round(btl_data["health_tax"], 2),
-            "pension": round(pension_deduction, 2)
+            "pension": round(pension_deduction, 2),
+            "study_fund": round(study_fund_deduction, 2)
         }
     }

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from backend.calculator import calculate_shift_hours, calculate_monthly_salary
+from calculator import calculate_shift_hours, calculate_monthly_salary
 
 app = FastAPI(title="Salary App API")
 
@@ -17,7 +17,6 @@ class ShiftRequest(BaseModel):
     end_time: str
     is_weekend_or_holiday: bool
 
-# המודל החדש שמייצג את מבנה החוזה הגלובלי הדינמי
 class GlobalMonthlySalaryRequest(BaseModel):
     total_hours: float
     global_base_hours: float
@@ -28,6 +27,7 @@ class GlobalMonthlySalaryRequest(BaseModel):
     credit_points: float
     pension_rate: float
     travel_expenses: float
+    study_fund_rate: float
 
 @app.post("/api/calculate-shift")
 def api_calculate_shift(shift: ShiftRequest):
@@ -44,5 +44,6 @@ def api_calculate_monthly_net(data: GlobalMonthlySalaryRequest):
         extra_ot_hourly_rate=data.extra_ot_hourly_rate,
         credit_points=data.credit_points,
         pension_rate=data.pension_rate,
-        travel_expenses=data.travel_expenses
+        travel_expenses=data.travel_expenses,
+        study_fund_rate=data.study_fund_rate
     )
