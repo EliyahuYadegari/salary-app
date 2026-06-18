@@ -1,9 +1,7 @@
 from datetime import datetime
 
-# ערך נקודת זיכוי לשנת 2024
 CREDIT_POINT_VALUE = 242.0
 
-# מדרגות מס הכנסה לשנת 2024 (הכנסה חודשית, אחוז מס)
 TAX_BRACKETS = [
     (7010, 0.10),
     (10060, 0.14),
@@ -13,20 +11,14 @@ TAX_BRACKETS = [
     (60130, 0.47)
 ]
 
-# מדרגות ביטוח לאומי וביטוח בריאות 2024 (עובד שכיר)
-# עד 7522 ש"ח: ב"ל 0.4%, בריאות 3.1%
-# מעל 7522 ש"ח (עד המקסימום): ב"ל 7%, בריאות 5%
 BTL_LOWER_LIMIT = 7522.0
 
 def calculate_shift_hours(start_time_str: str, end_time_str: str, is_weekend_or_holiday: bool) -> dict:
     fmt = "%H:%M"
     start = datetime.strptime(start_time_str, fmt)
     end = datetime.strptime(end_time_str, fmt)
-    
     diff = end - start
     total_hours = diff.total_seconds() / 3600.0
-    
-    # טיפול במשמרת שעוברת את חצות
     if total_hours < 0:
         total_hours += 24.0
 
@@ -35,10 +27,9 @@ def calculate_shift_hours(start_time_str: str, end_time_str: str, is_weekend_or_
     ot_150 = 0.0
 
     if is_weekend_or_holiday:
-        # בשבת/חג, השעות הראשונות הן 150%, ולאחר מכן 175% ו-200% (לצורך הפשטות נתייחס להכל כ-150% בסיס)
         ot_150 = total_hours
     else:
-        if total_hours <= 8: # מניח שבוע עבודה של 5 ימים
+        if total_hours <= 8:
             regular_hours = total_hours
         elif total_hours <= 10:
             regular_hours = 8.0
@@ -58,7 +49,6 @@ def calculate_shift_hours(start_time_str: str, end_time_str: str, is_weekend_or_
 def calculate_income_tax(gross_salary: float, credit_points: float) -> float:
     tax = 0.0
     previous_limit = 0.0
-    
     for limit, rate in TAX_BRACKETS:
         if gross_salary > previous_limit:
             taxable_amount = min(gross_salary, limit) - previous_limit
@@ -66,65 +56,54 @@ def calculate_income_tax(gross_salary: float, credit_points: float) -> float:
             previous_limit = limit
         else:
             break
-            
-    # הפחתת נקודות זיכוי
     credit_discount = credit_points * CREDIT_POINT_VALUE
     final_tax = tax - credit_discount
-    
-    return max(0.0, final_tax) # מס לא יכול להיות שלילי
+    return max(0.0, final_tax)
 
 def calculate_bituach_leumi(gross_salary: float) -> dict:
     btl_lower_amount = min(gross_salary, BTL_LOWER_LIMIT)
     btl_higher_amount = max(0.0, gross_salary - BTL_LOWER_LIMIT)
-    
     health_tax = (btl_lower_amount * 0.031) + (btl_higher_amount * 0.05)
     national_insurance = (btl_lower_amount * 0.004) + (btl_higher_amount * 0.07)
-    
     return {
         "health_tax": health_tax,
         "national_insurance": national_insurance,
         "total": health_tax + national_insurance
     }
 
+# הפונקציה החדשה והמעודכנת למודל הגלובלי המשולב
 def calculate_monthly_salary(
-    hours_data: dict, 
-    hourly_rate: float, 
-    credit_points: float, 
+    total_hours: float,
+    global_base_hours: float,
+    global_base_salary: float,
+    global_ot_hours: float,
+    global_ot_salary: float,
+    extra_ot_hourly_rate: float,
+    credit_points: float,
     pension_rate: float,
-    travel_expenses: float,
-    is_global_model: bool = False,
-    global_base_hours: float = 182.0,
-    global_base_salary: float = 0.0) -> dict:
+    travel_expenses: float
+) -> dict:
     
-    # הוספת הגנה: אם שדה חסר, השתמש ב-0
-    reg = hours_data.get("regular", 0)
-    ot125 = hours_data.get("ot_125", 0)
-    ot150 = hours_data.get("ot_150", 0)
-    total = hours_data.get("total", reg + ot125 + ot150)
-
-    gross_salary = 0.0
+    # 1. שכר חוזה קבוע בסיסי (שכר בסיס + רכיב שעות נוספות גלובליות המשולמות קבוע)
+    contract_base_gross = global_base_salary + global_ot_salary
     
-    if is_global_model:
-        # ... (שמור את הלוגיקה הקיימת)
-        gross_salary = global_base_salary
-        if total > global_base_hours:
-            extra_hours = total - global_base_hours
-            gross_salary += extra_hours * hourly_rate * 1.25
-    else:
-        # שימוש במשתנים החדשים והבטוחים
-        gross_salary = (
-            (reg * hourly_rate) +
-            (ot125 * hourly_rate * 1.25) +
-            (ot150 * hourly_rate * 1.50)
-        )
+    # 2. חישוב מכסת שעות מקסימלית של החוזה (למשל 182 + 8 = 190 שעות)
+    total_contract_hours = global_base_hours + global_ot_hours
     
-    # הוספת נסיעות (פטור מדמי ביטוח לאומי אך חייב במס, תלוי בהגדרות - כאן נפשט ונוסיף לברוטו)
-    total_gross = gross_salary + travel_expenses
+    # 3. חישוב שעות חריגות מעבר למכסה הכללית ותגמולן לפי התעריף השעתי הדינמי
+    extra_hours = max(0.0, total_hours - total_contract_hours)
+    extra_hours_pay = extra_hours * extra_ot_hourly_rate
     
-    # ניכויים
+    # סך שכר הברוטו לפני נסיעות
+    work_gross = contract_base_gross + extra_hours_pay
+    total_gross = work_gross + travel_expenses
+    
+    # 4. ניכוי מסים והפרשות סוציאליות
     tax = calculate_income_tax(total_gross, credit_points)
     btl_data = calculate_bituach_leumi(total_gross)
-    pension_deduction = gross_salary * (pension_rate / 100.0) # פנסיה מחושבת על שכר הבסיס לרוב
+    
+    # פנסיה מחושבת על פי חוק לרוב משכר הבסיס בלבד (ללא רכיבי שעות נוספות)
+    pension_deduction = global_base_salary * (pension_rate / 100.0)
     
     total_deductions = tax + btl_data["total"] + pension_deduction
     net_salary = total_gross - total_deductions
@@ -132,6 +111,8 @@ def calculate_monthly_salary(
     return {
         "gross_salary": round(total_gross, 2),
         "net_salary": round(net_salary, 2),
+        "extra_hours": round(extra_hours, 2),
+        "extra_hours_pay": round(extra_hours_pay, 2),
         "deductions": {
             "income_tax": round(tax, 2),
             "national_insurance": round(btl_data["national_insurance"], 2),

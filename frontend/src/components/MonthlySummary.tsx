@@ -1,47 +1,167 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 
 const MonthlySummary: React.FC = () => {
-  const [monthlyStats, setMonthlyStats] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [salaryResult, setSalaryResult] = useState<any>(null);
+  const [summaryData, setSummaryData] = useState({
+    totalHours: 0,
+    contractLimitHours: 190,
+    currentMonthName: ''
+  });
 
-  const calculateMonthly = async () => {
+  const loadMonthlyDataAndCalculate = async () => {
     if (!auth.currentUser) return;
-    
-    // שליפת כל המשמרות מה-Firestore
-    const q = query(collection(db, `users/${auth.currentUser.uid}/shifts`));
-    const querySnapshot = await getDocs(q);
-    
-    let totalRegular = 0;
-    querySnapshot.forEach((doc) => {
-      const data = doc.data().calculated; // השעות שחושבו ביום בודד
-      if (data && data.regular) totalRegular += data.regular;
-    });
+    setLoading(true);
 
-    // שליחה לשרת לחישוב ברוטו/נטו חודשי
-    const response = await fetch('http://127.0.0.1:8000/api/calculate-monthly-salary', {
+    try {
+      const userDocRef = doc(db, 'users', auth.currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      const settings = userDocSnap.data()?.settings || {
+        globalBaseHours: 182,
+        globalBaseSalary: 11000,
+        globalOtHours: 8,
+        globalOtSalary: 500,
+        extraOtHourlyRate: 80,
+        creditPoints: 2.25,
+        pensionRate: 6,
+        travelExpenses: 300
+      };
+
+      const today = new Date();
+      const currentMonthStr = today.toISOString().substring(0, 7); 
+      const monthName = today.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+
+      const q = query(collection(db, `users/${auth.currentUser.uid}/shifts`));
+      const querySnapshot = await getDocs(q);
+
+      let monthTotalHours = 0;
+      querySnapshot.forEach((shiftDoc) => {
+        const shift = shiftDoc.data();
+        if (shift.date && shift.date.startsWith(currentMonthStr)) {
+          monthTotalHours += shift.calculated?.total || 0;
+        }
+      });
+
+      const totalContractHours = settings.globalBaseHours + settings.globalOtHours;
+
+      setSummaryData({
+        totalHours: Number(monthTotalHours.toFixed(2)),
+        contractLimitHours: totalContractHours,
+        currentMonthName: monthName
+      });
+
+      // שליחת כל נתוני החוזה הגלובלי האישיים של המשתמש ל-API
+      const response = await fetch('http://127.0.0.1:8000/api/calculate-monthly-net', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            hours_data: { regular: totalRegular, total: totalRegular }, 
-            hourly_rate: 50, // מומלץ לשלוף מה-Settings
-            credit_points: 2.25,
-            pension_rate: 6,
-            travel_expenses: 300
+          total_hours: monthTotalHours,
+          global_base_hours: settings.globalBaseHours,
+          global_base_salary: settings.globalBaseSalary,
+          global_ot_hours: settings.globalOtHours,
+          global_ot_salary: settings.globalOtSalary,
+          extra_ot_hourly_rate: settings.extraOtHourlyRate,
+          credit_points: settings.creditPoints,
+          pension_rate: settings.pensionRate,
+          travel_expenses: settings.travelExpenses
         }),
-    });
-    setMonthlyStats(await response.json());
+      });
+
+      const data = await response.json();
+      setSalaryResult(data);
+    } catch (error) {
+      console.error("Error calculating global salary:", error);
+      alert("אירעה שגיאה בחישוב תלוש השכר הגלובלי.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMonthlyDataAndCalculate();
+  }, []);
+
+  const rowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '12px 0',
+    borderBottom: '1px solid #edf2f7',
+    fontSize: '15px'
   };
 
   return (
-    <div style={{ marginTop: '20px', padding: '20px', border: '1px solid #007bff' }}>
-      <button onClick={calculateMonthly}>חשב תלוש חודשי</button>
-      {monthlyStats && (
-        <div style={{ marginTop: '10px' }}>
-          <h3>תלוש משכורת חודשי</h3>
-          <p>ברוטו: {monthlyStats.gross_salary} ₪</p>
-          <p>נטו: {monthlyStats.net_salary} ₪</p>
+    <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', border: '1px solid #edf2f7' }}>
+      <h3 style={{ color: '#2d3748', margin: '0 0 5px 0', textAlign: 'center' }}>📄 סימולציית תלוש חוזה גלובלי</h3>
+      <p style={{ color: '#718096', fontSize: '14px', textAlign: 'center', margin: '0 0 20px 0' }}>{summaryData.currentMonthName}</p>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '10px', color: '#4a5568', fontWeight: 'bold' }}>מפיק נתוני שכר גלובליים ומריץ חישובי מס...</div>
+      ) : salaryResult ? (
+        <div>
+          <div style={{ backgroundColor: '#f0fff4', border: '1px solid #c6f6d5', padding: '20px', borderRadius: '12px', textAlign: 'center', marginBottom: '25px' }}>
+            <span style={{ fontSize: '14px', color: '#2f855a', fontWeight: 'bold' }}>נטו משוער לתשלום (חודשי)</span>
+            <h1 style={{ margin: '5px 0 0 0', color: '#22543d', fontSize: '34px' }}>{salaryResult.net_salary} ₪</h1>
+          </div>
+
+          <div style={{ marginBottom: '25px', backgroundColor: '#f7fafc', padding: '15px', borderRadius: '10px' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#4a5568' }}>📊 סיכום שעות מול חוזה</h4>
+            <div style={rowStyle}>
+              <span>שעות שבוצעו בפועל החודש:</span>
+              <span style={{ fontWeight: 'bold' }}>{summaryData.totalHours} שעות</span>
+            </div>
+            <div style={rowStyle}>
+              <span>מכסת שעות החוזה הכוללת:</span>
+              <span>{summaryData.contractLimitHours} שעות</span>
+            </div>
+            <div style={rowStyle}>
+              <span>שעות חריגות לתשלום נוסף:</span>
+              <span style={{ color: salaryResult.extra_hours > 0 ? '#dd6b20' : '#4a5568', fontWeight: 'bold' }}>
+                {salaryResult.extra_hours} שעות
+              </span>
+            </div>
+          </div>
+
+          <div style={{ padding: '0 5px' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#4a5568' }}>💰 פירוט רכיבים וניכויים חוקיים</h4>
+            <div style={rowStyle}>
+              <span>סך שכר ברוטו (כולל חריגות ונסיעות):</span>
+              <span style={{ fontWeight: 'bold', color: '#2b6cb0' }}>{salaryResult.gross_salary} ₪</span>
+            </div>
+            {salaryResult.extra_hours_pay > 0 && (
+              <div style={rowStyle}>
+                <span>מתוכם תשלום שעות חריגות:</span>
+                <span style={{ color: '#38a169', fontWeight: 'bold' }}>+{salaryResult.extra_hours_pay} ₪</span>
+              </div>
+            )}
+            <div style={rowStyle}>
+              <span>מס הכנסה (כולל נק"ז):</span>
+              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.income_tax} ₪</span>
+            </div>
+            <div style={rowStyle}>
+              <span>דמי ביטוח לאומי:</span>
+              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.national_insurance} ₪</span>
+            </div>
+            <div style={rowStyle}>
+              <span>דמי ביטוח בריאות:</span>
+              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.health_tax} ₪</span>
+            </div>
+            <div style={rowStyle}>
+              <span>הפרשת פנסיה עובד (משכר בסיס):</span>
+              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.pension} ₪</span>
+            </div>
+          </div>
+
+          <button 
+            onClick={loadMonthlyDataAndCalculate}
+            style={{ width: '100%', marginTop: '25px', padding: '12px', backgroundColor: '#3182ce', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}
+          >
+            🔄 רענן נתונים וחשב מחדש
+          </button>
         </div>
+      ) : (
+        <div style={{ textAlign: 'center', color: '#718096' }}>לא נמצאו נתונים להפקת סימולציה.</div>
       )}
     </div>
   );

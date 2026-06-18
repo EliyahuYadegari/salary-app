@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
 import { db, auth } from '../firebase';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 
 const ShiftEntry: React.FC = () => {
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
-  const [calculatedHours, setCalculatedHours] = useState<any>(null);
-  const [salaryResult, setSalaryResult] = useState<any>(null);
 
   const saveShift = async () => {
     if (!auth.currentUser) return;
+    
+    if (!date || !startTime || !endTime) {
+      alert("נא למלא את כל השדות (תאריך, כניסה ויציאה)");
+      return;
+    }
 
     try {
-      // 1. חישוב שעות מול ה-Backend
-      const hoursResponse = await fetch('http://127.0.0.1:8000/api/calculate-shift', {
+      // קריאה לשרת הפייתון לחישוב שעות וסיווגן (לשמירה במסד הנתונים)
+      const response = await fetch('http://127.0.0.1:8000/api/calculate-shift', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -23,65 +26,53 @@ const ShiftEntry: React.FC = () => {
           is_weekend_or_holiday: false
         }),
       });
-      const hoursData = await hoursResponse.json();
-      setCalculatedHours(hoursData);
+      const hoursData = await response.json();
 
-      // 2. שליפת הגדרות מה-Firestore
-      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-      const settings = userDoc.data()?.settings || { hourlyRate: 50, creditPoints: 2.25, pensionRate: 6, travelExpenses: 300 };
-
-      // 3. חישוב שכר חודשי סופי מול ה-Backend
-      const salaryResponse = await fetch('http://127.0.0.1:8000/api/calculate-monthly-net', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hours_data: hoursData,
-          hourly_rate: settings.hourlyRate,
-          credit_points: settings.creditPoints,
-          pension_rate: settings.pensionRate,
-          travel_expenses: settings.travelExpenses
-        }),
-      });
-      const salaryData = await salaryResponse.json();
-      setSalaryResult(salaryData);
-
-      // 4. שמירה ב-Firestore
+      // שמירת המשמרת והשעות המחושבות ב-Firestore
       await addDoc(collection(db, `users/${auth.currentUser.uid}/shifts`), {
         date,
         startTime,
         endTime,
         calculated: hoursData,
-        salaryResult: salaryData,
         createdAt: new Date()
       });
       
-      alert('המשמרת נשמרה וחושבה בהצלחה!');
+      alert('המשמרת נשמרה בהצלחה!');
+      
+      // איפוס הטופס להזנה הבאה
+      setDate('');
+      setStartTime('');
+      setEndTime('');
+      
     } catch (e) {
       console.error("Error saving shift: ", e);
+      alert('אירעה שגיאה. ודא ששרת הפייתון מופעל.');
     }
   };
 
   return (
-    <div style={{ padding: '20px', border: '1px solid #ccc', borderRadius: '8px', maxWidth: '350px' }}>
-      <h3>הזנת משמרת</h3>
-      <input type="date" onChange={(e) => setDate(e.target.value)} /><br/>
-      <input type="time" onChange={(e) => setStartTime(e.target.value)} /> כניסה<br/>
-      <input type="time" onChange={(e) => setEndTime(e.target.value)} /> יציאה<br/>
-      <button onClick={saveShift} style={{ marginTop: '10px' }}>שמור וחשב</button>
+    <div style={{ padding: '20px', backgroundColor: '#ffffff', border: '1px solid #edf2f7', borderRadius: '16px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+      <h3 style={{ margin: '0 0 20px 0', color: '#2d3748', textAlign: 'center' }}>⏱️ דיווח משמרת חדשה</h3>
       
-      {salaryResult && (
-        <div style={{ marginTop: '20px', padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '5px' }}>
-          <h4>תוצאות חישוב משוערות:</h4>
-          <p><strong>ברוטו:</strong> {salaryResult.gross_salary} ₪</p>
-          <p><strong>נטו משוער:</strong> {salaryResult.net_salary} ₪</p>
-          <hr />
-          <p style={{ fontSize: '12px' }}>
-            מס הכנסה: {salaryResult.deductions.income_tax} ₪<br/>
-            ביטוח לאומי/בריאות: {salaryResult.deductions.national_insurance + salaryResult.deductions.health_tax} ₪<br/>
-            פנסיה: {salaryResult.deductions.pension} ₪
-          </p>
+      <div style={{ marginBottom: '15px' }}>
+        <label style={{ display: 'block', marginBottom: '8px', color: '#4a5568', fontWeight: 'bold' }}>תאריך המשמרת:</label>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e0', boxSizing: 'border-box', fontSize: '16px' }} />
+      </div>
+
+      <div style={{ display: 'flex', gap: '15px', marginBottom: '25px' }}>
+        <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#4a5568', fontWeight: 'bold' }}>שעת כניסה:</label>
+            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e0', boxSizing: 'border-box', fontSize: '16px' }} />
         </div>
-      )}
+        <div style={{ flex: 1 }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#4a5568', fontWeight: 'bold' }}>שעת יציאה:</label>
+            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e0', boxSizing: 'border-box', fontSize: '16px' }} />
+        </div>
+      </div>
+
+      <button onClick={saveShift} style={{ width: '100%', padding: '16px', backgroundColor: '#3182ce', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px' }}>
+        שמור משמרת 
+      </button>
     </div>
   );
 };
