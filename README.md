@@ -6,8 +6,7 @@ An advanced Web Application (PWA) that allows employees to manage shifts, define
 
 ## ✨ System Features
 
-* 
-**Smart Authentication (Multi-user):** Secure and personal login using a Google account.
+* **Smart Authentication (Multi-user):** Secure and personal login using a Google account.
 
 
 * 
