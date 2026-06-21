@@ -9,50 +9,38 @@ An advanced Web Application (PWA) that allows employees to manage shifts, define
 * **Smart Authentication (Multi-user):** Secure and personal login using a Google account.
 
 
-* 
-**Complex Contract Management:** Support for hourly wage or a combined global wage (base salary + global overtime + exceptional hourly rate).
+* **Complex Contract Management:** Support for hourly wage or a combined global wage (base salary + global overtime + exceptional hourly rate).
 
 
-* 
-**Lawful Salary Calculation:** Accurate calculation of overtime (125%, 150%), income tax deduction (based on credit points and tax brackets), national insurance, health insurance, pension, and study fund.
+* **Lawful Salary Calculation:** Accurate calculation of overtime (125%, 150%), income tax deduction (based on credit points and tax brackets), national insurance, health insurance, pension, and study fund.
 
 
-* 
-**Shift Management (CRUD):** Add, view, edit, and delete shifts with convenient filtering by month. Includes dynamic shift entry with real-time "Now" buttons and default checkout times.
+* **Shift Management (CRUD):** Add, view, edit, and delete shifts with convenient filtering by month. Includes dynamic shift entry with real-time "Now" buttons and default checkout times.
 
 
-* 
-**Estimated Payslip:** Generation of a monthly payslip simulation detailing all components, additions, and deductions.
+* **Estimated Payslip:** Generation of a monthly payslip simulation detailing all components, additions, and deductions.
 
 
-* 
-**Dashboard (HomeStats):** Real-time monthly data summary displaying total hours, remaining potential, and overtime.
+* **Dashboard (HomeStats):** Real-time monthly data summary displaying total hours, remaining potential, and overtime.
 
 
-* 
-**PWA:** Mobile-optimized design with the ability to install as an app directly on the home screen.
-
+* **PWA:** Mobile-optimized design with the ability to install as an app directly on the home screen.
 
 
 ---
 
 ## 🛠️ Technologies Used
 
-* 
-**Frontend:** React, TypeScript, Vite.
+* **Frontend:** React, TypeScript, Vite.
 
 
-* 
-**Backend:** Python, FastAPI.
+* **Backend:** Python, FastAPI.
 
 
-* 
-**Database & Authentication:** Firebase (Firestore, Google Sign-In).
+* **Database & Authentication:** Firebase (Firestore, Google Sign-In).
 
 
-* 
-**Deployment:** Firebase Hosting (Frontend), Render (Backend API).
-
+* **Deployment:** Firebase Hosting (Frontend), Render (Backend API).
 
 
 ---
@@ -81,20 +69,17 @@ python -m venv .venv
 
 ```
 
-
 3. Install requirements:
 ```bash
 pip install -r requirements.txt
 
 ```
 
-
 4. Run the backend server:
 ```bash
 python -m uvicorn backend.main:app --reload
 
 ```
-
 
 
 *The server will run at: `http://127.0.0.1:8000*`.
@@ -111,8 +96,7 @@ npm install
 ```
 
 
-2. 
-**Firebase Configuration:** Create a `src/firebase.ts` file and paste your project's Config settings from the Firebase Console. Ensure you export `db`, `auth`, and `googleProvider`.
+2. **Firebase Configuration:** Create a `src/firebase.ts` file and paste your project's Config settings from the Firebase Console. Ensure you export `db`, `auth`, and `googleProvider`.
 
 
 3. Start the frontend development server:
@@ -121,11 +105,7 @@ npm run dev
 
 ```
 
-
-
-*The application will be available at: `http://localhost:5173*`.
-
-
+* The application will be available at: `http://localhost:5173*`.
 
 ---
 
