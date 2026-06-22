@@ -109,4 +109,23 @@ npm run dev
 
 ---
 
+### Pictures
+1. Main page
+
+<img width="859" height="941" alt="צילום מסך 2026-06-22 145830" src="https://github.com/user-attachments/assets/832f59c1-abe8-4935-8d7c-ba96fa3433f6" />
+
+2. Add shift
+
+<img width="922" height="827" alt="צילום מסך 2026-06-22 145840" src="https://github.com/user-attachments/assets/f3ea5708-dec3-4d8f-961d-1f0b505eae83" />
+
+3. Change your personal setting
+
+<img width="886" height="922" alt="צילום מסך 2026-06-22 145918" src="https://github.com/user-attachments/assets/45cfab51-3d4f-4496-a57e-8c4eb8a07a15" />
+
+4. Calculate your monthly salary
+
+<img width="822" height="927" alt="צילום מסך 2026-06-22 150108" src="https://github.com/user-attachments/assets/0541031f-9ce4-4fa2-80b7-c672fb08c779" />
+
+---
+
 Developed by Eliyahu Yadegari
