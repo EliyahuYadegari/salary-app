@@ -21,7 +21,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# מודל הנתונים הצפויים להגיע מה-Frontend באפליקציה
+# === מודל הנתונים לחישוב משמרת בודדת ===
+class ShiftCalculationRequest(BaseModel):
+    start_time: str
+    end_time: str
+    is_weekend_or_holiday: Optional[bool] = False
+
+# === מודל הנתונים לחישוב השכר החודשי ===
 class SalaryCalculationRequest(BaseModel):
     total_hours: Optional[float] = 0.0
     regular_hours: Optional[float] = 0.0
@@ -43,10 +49,25 @@ class SalaryCalculationRequest(BaseModel):
 def read_root():
     return {"status": "healthy", "message": "Salary App API is running smoothly!"}
 
+# === נתיב חדש: חישוב שעות של משמרת בודדת ===
+@app.post("/api/calculate-shift")
+def api_calculate_shift(data: ShiftCalculationRequest):
+    try:
+        # קריאה לפונקציית חישוב המשמרת מתוך calculator.py
+        result = calculate_shift_hours(
+            start_time_str=data.start_time,
+            end_time_str=data.end_time,
+            is_weekend_or_holiday=data.is_weekend_or_holiday or False
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Shift calculation error: {str(e)}")
+
+# === נתיב: חישוב השכר החודשי המשולב (שעתי / יחסי גלובלי) ===
 @app.post("/api/calculate-monthly-net")
 def api_calculate_monthly_net(data: SalaryCalculationRequest):
     try:
-        # אריזת כל נתוני השעות לתוך מילון מסודר כפי שפונקציית החישוב ב-calculator.py מצפה לקבל
+        # אריזת כל נתוני השעות לתוך מילון מסודר כפי שפונקציית החישוב מצפה לקבל
         hours_dict = {
             "total": data.total_hours or 0.0,
             "regular": data.regular_hours or data.total_hours or 0.0,
@@ -54,7 +75,7 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
             "ot_150": data.ot_150_hours or 0.0
         }
 
-        # הרצת פונקציית החישוב עם הפרמטרים המעודכנים
+        # הרצת פונקציית החישוב החודשית עם ערכי ברירת מחדל למניעת ערכי Null
         result = calculate_monthly_salary(
             hours_data=hours_dict,
             hourly_rate=data.hourly_rate or 0.0,
@@ -72,5 +93,5 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
         return result
         
     except Exception as e:
-        # במקרה של תקלה כלשהי בתוך calculator.py, השגיאה תודפס ללוג במקום קריסה אנונימית
+        # הדפסת השגיאה המלאה ללוג של Render למניעת קריסה אנונימית
         raise HTTPException(status_code=500, detail=f"Internal calculation error: {str(e)}")
