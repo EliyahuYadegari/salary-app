@@ -23,14 +23,14 @@ app.add_middleware(
 
 # מודל הנתונים הצפויים להגיע מה-Frontend באפליקציה
 class SalaryCalculationRequest(BaseModel):
-    total_hours: float
+    total_hours: Optional[float] = 0.0
     regular_hours: Optional[float] = 0.0
     ot_125_hours: Optional[float] = 0.0
     ot_150_hours: Optional[float] = 0.0
-    hourly_rate: float
-    credit_points: float
-    pension_rate: float
-    travel_expenses: float
+    hourly_rate: Optional[float] = 0.0
+    credit_points: Optional[float] = 2.25
+    pension_rate: Optional[float] = 6.0
+    travel_expenses: Optional[float] = 0.0
     study_fund_rate: Optional[float] = 0.0
     is_global_model: Optional[bool] = False
     global_base_hours: Optional[float] = 182.0
@@ -48,26 +48,26 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
     try:
         # אריזת כל נתוני השעות לתוך מילון מסודר כפי שפונקציית החישוב ב-calculator.py מצפה לקבל
         hours_dict = {
-            "total": data.total_hours,
-            "regular": data.regular_hours if data.regular_hours else data.total_hours,
-            "ot_125": data.ot_125_hours if data.ot_125_hours else 0.0,
-            "ot_150": data.ot_150_hours if data.ot_150_hours else 0.0
+            "total": data.total_hours or 0.0,
+            "regular": data.regular_hours or data.total_hours or 0.0,
+            "ot_125": data.ot_125_hours or 0.0,
+            "ot_150": data.ot_150_hours or 0.0
         }
 
         # הרצת פונקציית החישוב עם הפרמטרים המעודכנים
         result = calculate_monthly_salary(
             hours_data=hours_dict,
-            hourly_rate=data.hourly_rate,
-            credit_points=data.credit_points,
-            pension_rate=data.pension_rate,
-            travel_expenses=data.travel_expenses,
-            study_fund_rate=data.study_fund_rate,
-            is_global_model=data.is_global_model,
-            global_base_hours=data.global_base_hours,
-            global_base_salary=data.global_base_salary,
-            global_ot_hours=data.global_ot_hours,
-            global_ot_salary=data.global_ot_salary,
-            extra_ot_hourly_rate=data.extra_ot_hourly_rate
+            hourly_rate=data.hourly_rate or 0.0,
+            credit_points=data.credit_points or 2.25,
+            pension_rate=data.pension_rate or 6.0,
+            travel_expenses=data.travel_expenses or 0.0,
+            study_fund_rate=data.study_fund_rate or 0.0,
+            is_global_model=data.is_global_model or False,
+            global_base_hours=data.global_base_hours or 182.0,
+            global_base_salary=data.global_base_salary or 0.0,
+            global_ot_hours=data.global_ot_hours or 0.0,
+            global_ot_salary=data.global_ot_salary or 0.0,
+            extra_ot_hourly_rate=data.extra_ot_hourly_rate or 0.0
         )
         return result
         
