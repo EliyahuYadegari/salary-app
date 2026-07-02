@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from calculator import calculate_shift_hours, calculate_monthly_salary
+from backend.calculator import calculate_shift_hours, calculate_monthly_salary
 
 app = FastAPI(title="Salary App API")
 
