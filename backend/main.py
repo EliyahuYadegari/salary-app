@@ -7,7 +7,12 @@ app = FastAPI(title="Salary App API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://salary-app-d0a8d.web.app",  # הכתובת של האפליקציה ב-Firebase
+        "http://localhost:5173",             # הכתובת המקומית לבדיקות במחשב
+        "*"                                  # מאפשר הכל ליתר ביטחון
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
