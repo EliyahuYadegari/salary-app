@@ -3,6 +3,10 @@ import { db, auth } from '../firebase';
 import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 
 const MonthlySummary: React.FC = () => {
+  // ברירת מחדל - החודש הנוכחי
+  const defaultMonth = new Date().toISOString().substring(0, 7);
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+
   const [loading, setLoading] = useState(false);
   const [salaryResult, setSalaryResult] = useState<any>(null);
   const [summaryData, setSummaryData] = useState({
@@ -30,13 +34,14 @@ const MonthlySummary: React.FC = () => {
         pensionRate: 6,
         travelExpenses: 300,
         studyFundRate: 0,
-        sickPayPolicy: 'law', // ברירת מחדל
-        standardDayHours: 8.5 // ברירת מחדל
+        sickPayPolicy: 'law',
+        standardDayHours: 8.5
       };
 
-      const today = new Date();
-      const currentMonthStr = today.toISOString().substring(0, 7); 
-      const monthName = today.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+      // יצירת שם החודש בעברית לפי החודש שנבחר
+      const [year, month] = selectedMonth.split('-');
+      const selectedDate = new Date(Number(year), Number(month) - 1);
+      const monthName = selectedDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
 
       const q = query(collection(db, `users/${auth.currentUser.uid}/shifts`));
       const querySnapshot = await getDocs(q);
@@ -47,14 +52,13 @@ const MonthlySummary: React.FC = () => {
 
       querySnapshot.forEach((shiftDoc) => {
         const shift = shiftDoc.data();
-        if (shift.date && shift.date.startsWith(currentMonthStr)) {
-          // הפרדה בין משמרות עבודה לימי מחלה/חופש כדי למנוע כפילות בשעות
+        // סינון חכם לפי החודש שהמשתמש בחר ב-UI
+        if (shift.date && shift.date.startsWith(selectedMonth)) {
           if (shift.type === 'vacation') {
             vacationDays += 1;
           } else if (shift.type === 'sick') {
             sickDates.push(shift.date);
           } else {
-            // משמרת עבודה רגילה
             monthTotalHours += shift.calculated?.total || 0;
           }
         }
@@ -72,7 +76,6 @@ const MonthlySummary: React.FC = () => {
         sickDaysCount: sickDates.length
       });
 
-      // קריאה לשרת ה-API האמיתי שלך ב-Render
       const response = await fetch('https://salary-app-4npn.onrender.com/api/calculate-monthly-net', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -87,7 +90,6 @@ const MonthlySummary: React.FC = () => {
           pension_rate: Number(settings.pensionRate) || 6,
           travel_expenses: Number(settings.travelExpenses) || 0,
           study_fund_rate: Number(settings.studyFundRate) || 0,
-          // --- שדות חדשים למשאבי אנוש ---
           vacation_days: vacationDays,
           sick_dates: sickDates,
           sick_pay_policy: settings.sickPayPolicy || 'law',
@@ -106,9 +108,10 @@ const MonthlySummary: React.FC = () => {
     }
   };
 
+  // מריץ את החישוב כל פעם שהמשתמש משנה את החודש בבוחר!
   useEffect(() => {
     loadMonthlyDataAndCalculate();
-  }, []);
+  }, [selectedMonth]); 
 
   const rowStyle = {
     display: 'flex',
@@ -120,15 +123,29 @@ const MonthlySummary: React.FC = () => {
 
   return (
     <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', border: '1px solid #edf2f7' }}>
-      <h3 style={{ color: '#2d3748', margin: '0 0 5px 0', textAlign: 'center' }}>📄 סימולציית תלוש חוזה גלובלי</h3>
-      <p style={{ color: '#718096', fontSize: '14px', textAlign: 'center', margin: '0 0 20px 0' }}>{summaryData.currentMonthName}</p>
+      <h3 style={{ color: '#2d3748', margin: '0 0 15px 0', textAlign: 'center' }}>📄 סימולציית תלוש חוזה גלובלי</h3>
+      
+      {/* בוחר החודשים החדש! */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '20px', backgroundColor: '#f7fafc', padding: '10px', borderRadius: '8px' }}>
+        <label style={{ fontWeight: 'bold', color: '#4a5568' }}>בחר חודש לתלוש:</label>
+        <input 
+          type="month" 
+          value={selectedMonth} 
+          onChange={(e) => setSelectedMonth(e.target.value)} 
+          style={{ padding: '8px', borderRadius: '8px', border: '1px solid #cbd5e0', fontSize: '15px', outline: 'none' }}
+        />
+      </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '10px', color: '#4a5568', fontWeight: 'bold' }}>מפיק נתוני שכר גלובליים ומריץ חישובי מס...</div>
+        <div style={{ textAlign: 'center', padding: '10px', color: '#4a5568', fontWeight: 'bold' }}>מפיק נתוני שכר ומריץ חישובי מס...</div>
       ) : salaryResult ? (
         <div>
+          <p style={{ color: '#718096', fontSize: '14px', textAlign: 'center', margin: '0 0 15px 0', fontWeight: 'bold' }}>
+            תלוש משוער עבור: {summaryData.currentMonthName}
+          </p>
+
           <div style={{ backgroundColor: '#f0fff4', border: '1px solid #c6f6d5', padding: '20px', borderRadius: '12px', textAlign: 'center', marginBottom: '25px' }}>
-            <span style={{ fontSize: '14px', color: '#2f855a', fontWeight: 'bold' }}>נטו משוער לתשלום (חודשי)</span>
+            <span style={{ fontSize: '14px', color: '#2f855a', fontWeight: 'bold' }}>נטו משוער לתשלום</span>
             <h1 style={{ margin: '5px 0 0 0', color: '#22543d', fontSize: '34px' }}>{salaryResult.net_salary} ₪</h1>
           </div>
 
@@ -139,7 +156,6 @@ const MonthlySummary: React.FC = () => {
               <span style={{ fontWeight: 'bold' }}>{summaryData.totalHours} שעות</span>
             </div>
             
-            {/* -- הצגת שעות מחלה וחופש -- */}
             {salaryResult.paid_vacation_hours > 0 && (
               <div style={rowStyle}>
                 <span>ערך שעות חופש ({summaryData.vacationDaysCount} ימים):</span>
@@ -193,7 +209,6 @@ const MonthlySummary: React.FC = () => {
               <span>הפרשת פנסיה עובד (משכר בסיס):</span>
               <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.pension} ₪</span>
             </div>
-            
             <div style={rowStyle}>
               <span>הפרשת קרן השתלמות עובד:</span>
               <span style={{ color: '#e53e3e', direction: 'ltr' }}>
@@ -206,11 +221,11 @@ const MonthlySummary: React.FC = () => {
             onClick={loadMonthlyDataAndCalculate}
             style={{ width: '100%', marginTop: '25px', padding: '12px', backgroundColor: '#3182ce', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '15px' }}
           >
-            🔄 רענן נתונים וחשב מחדש
+            🔄 רענן נתונים ידנית
           </button>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', color: '#718096' }}>לא נמצאו נתונים להפקת סימולציה.</div>
+        <div style={{ textAlign: 'center', color: '#718096' }}>לא נמצאו נתונים להפקת סימולציה בחודש זה.</div>
       )}
     </div>
   );

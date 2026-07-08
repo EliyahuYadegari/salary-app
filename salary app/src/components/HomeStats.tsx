@@ -9,7 +9,6 @@ const HomeStats: React.FC = () => {
     monthOvertime: 0,
     remainingHours: 0,
     targetHours: 0,
-    // שדות חדשים למשאבי אנוש
     vacationBalance: 0,
     sickBalance: 0,
     isHrConfigured: false
@@ -23,17 +22,15 @@ const HomeStats: React.FC = () => {
       const userDocSnap = await getDoc(userDocRef);
       const userSettings = userDocSnap.data()?.settings || {};
       
-      // -- נתוני שעות עבודה --
       const baseHours = Number(userSettings.globalBaseHours) || 0;
       const otHours = Number(userSettings.globalOtHours) || 0;
       const totalContractTarget = baseHours + otHours; 
 
-      // -- נתוני משאבי אנוש --
       const startDateString = userSettings.employmentStartDate;
       const yearlyVacationDays = Number(userSettings.yearlyVacationDays) || 12;
+      const standardDayHours = Number(userSettings.standardDayHours) || 8.5; // משיכת ערך יום תקני
       const isHrConfigured = !!startDateString;
 
-      // חישוב ותק בחודשים מלאים
       let monthsWorked = 0;
       if (isHrConfigured) {
         const startDate = new Date(startDateString);
@@ -45,7 +42,6 @@ const HomeStats: React.FC = () => {
       const today = new Date().toISOString().split('T')[0];
       const currentMonth = today.substring(0, 7); 
 
-      // שליפת כלל הדיווחים של המשתמש (כדי לספור גם חופש/מחלה היסטוריים)
       const q = query(collection(db, `users/${auth.currentUser.uid}/shifts`));
       const querySnapshot = await getDocs(q);
 
@@ -58,22 +54,28 @@ const HomeStats: React.FC = () => {
         const shift = shiftDoc.data();
         const calc = shift.calculated;
 
-        // 1. ספירת ימי חופש ומחלה (מכל הזמנים)
+        // ספירת ימי חופש ומחלה לצבירה הכללית
         if (shift.type === 'sick') usedSick++;
         if (shift.type === 'vacation') usedVacation++;
 
-        // 2. חישוב שעות נטו לחודש הנוכחי בלבד (רק ימי עבודה רגילים או ימים בעלי ערך שעות)
+        // חישוב שעות לחודש הנוכחי (כולל שעות מחלה וחופש!)
         if (shift.date && shift.date.startsWith(currentMonth)) {
-          const total = calc?.total || 0;
-          monthTotal += total;
+          let dailyHours = 0;
+          
+          if (shift.type === 'vacation' || shift.type === 'sick') {
+            dailyHours = standardDayHours; // מוסיף את ערך השעות של יום עבודה רגיל
+          } else {
+            dailyHours = calc?.total || 0; // מוסיף שעות ממשמרת שעבדת בפועל
+          }
+
+          monthTotal += dailyHours;
 
           if (shift.date === today) {
-            todayHours += total;
+            todayHours += dailyHours;
           }
         }
       });
 
-      // -- חישובי יתרות --
       const monthOvertime = Math.max(0, monthTotal - totalContractTarget);
       const remainingHours = Math.max(0, totalContractTarget - monthTotal);
 
@@ -81,10 +83,8 @@ const HomeStats: React.FC = () => {
       let finalVacationBalance = 0;
 
       if (isHrConfigured) {
-        // צבירת מחלה: 1.5 ימים לכל חודש עבודה. צבירת חופש: לפי החלק היחסי בחודש של המכסה השנתית.
         const earnedSick = monthsWorked * 1.5;
         const earnedVacation = monthsWorked * (yearlyVacationDays / 12);
-
         finalSickBalance = earnedSick - usedSick;
         finalVacationBalance = earnedVacation - usedVacation;
       }
@@ -118,7 +118,6 @@ const HomeStats: React.FC = () => {
   return (
     <div style={{ marginBottom: '25px' }}>
       
-      {/* אזור שעות עבודה */}
       <h3 style={{ color: '#2d3748', marginBottom: '5px' }}>תמונת מצב - החודש הנוכחי</h3>
       <p style={{ fontSize: '14px', color: '#718096', margin: '0 0 15px 0' }}>
         מכסת שעות החוזה: {stats.targetHours > 0 ? `${stats.targetHours} שעות` : 'טרם הוגדרו הגדרות חוזה'}
@@ -144,8 +143,7 @@ const HomeStats: React.FC = () => {
 
       <hr style={{ border: '1px solid #edf2f7', margin: '25px 0' }} />
 
-      {/* אזור משאבי אנוש */}
-      <h3 style={{ color: '#2d3748', marginBottom: '15px' }}>⛱️ משאבי אנוש - יתרות</h3>
+      <h3 style={{ color: '#2d3748', marginBottom: '15px' }}>⛱️ יתרות חופש ומחלה</h3>
       {stats.isHrConfigured ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
           <div style={{...cardStyle, borderLeft: '4px solid #805ad5'}}>
@@ -162,7 +160,6 @@ const HomeStats: React.FC = () => {
           על מנת לראות יתרות חופש ומחלה, יש להגדיר <strong>תאריך תחילת העסקה</strong> במסך ההגדרות.
         </div>
       )}
-
     </div>
   );
 };
