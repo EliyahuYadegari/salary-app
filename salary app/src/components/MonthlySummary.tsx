@@ -151,46 +151,38 @@ const MonthlySummary: React.FC = () => {
 
           <div style={{ marginBottom: '25px', backgroundColor: '#f7fafc', padding: '15px', borderRadius: '10px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#4a5568' }}>📊 סיכום שעות מול חוזה</h4>
-            
             <div style={rowStyle}>
               <span>שעות עבודה פיזיות:</span>
               <span>{summaryData.totalHours} שעות</span>
             </div>
             
-            {/* הצגת שעות חופש */}
             {salaryResult.paid_vacation_hours > 0 && (
               <div style={rowStyle}>
                 <span>ערך שעות חופש ({summaryData.vacationDaysCount} ימים):</span>
-                <span style={{ color: '#805ad5', fontWeight: 'bold' }}>+{salaryResult.paid_vacation_hours} שעות</span>
+                <span style={{ color: '#805ad5' }}>+{salaryResult.paid_vacation_hours} שעות</span>
               </div>
             )}
-            
-            {/* הצגת שעות מחלה - כאן היה החסר! */}
             {salaryResult.paid_sick_hours > 0 && (
               <div style={rowStyle}>
-                <span>ערך שעות מחלה בתשלום ({summaryData.sickDaysCount} ימים):</span>
-                <span style={{ color: '#e53e3e', fontWeight: 'bold' }}>+{salaryResult.paid_sick_hours} שעות</span>
+                <span>ערך שעות מחלה חוקי ({summaryData.sickDaysCount} ימים):</span>
+                <span style={{ color: '#e53e3e' }}>+{salaryResult.paid_sick_hours} שעות</span>
               </div>
             )}
 
-            {/* שורת סיכום שעות כוללת - החישוב כאן הוא הבסיס לחישוב השכר */}
+            {/* שורת סיכום שעות מתוקנת */}
             <div style={{ ...rowStyle, backgroundColor: '#edf2f7', padding: '10px', borderRadius: '6px', marginTop: '5px' }}>
               <span style={{ fontWeight: 'bold', color: '#2d3748' }}>סה"כ שעות לחישוב השכר:</span>
-              <span style={{ fontWeight: 'bold', color: '#2d3748' }}>
-                {(summaryData.totalHours + (salaryResult.paid_vacation_hours || 0) + (salaryResult.paid_sick_hours || 0)).toFixed(2)} שעות
-              </span>
+              <span style={{ fontWeight: 'bold', color: '#2d3748' }}>{totalCalculatedHours} שעות</span>
             </div>
 
             <div style={{ ...rowStyle, marginTop: '10px' }}>
               <span>מכסת שעות החוזה הכוללת:</span>
               <span>{summaryData.contractLimitHours} שעות</span>
             </div>
-            
-            {/* חישוב שעות חריגות על בסיס הסה"כ המעודכן */}
             <div style={rowStyle}>
               <span>שעות חריגות לתשלום נוסף:</span>
-              <span style={{ color: (summaryData.totalHours + (salaryResult.paid_vacation_hours || 0) + (salaryResult.paid_sick_hours || 0)) > summaryData.contractLimitHours ? '#dd6b20' : '#4a5568', fontWeight: 'bold' }}>
-                {Math.max(0, (summaryData.totalHours + (salaryResult.paid_vacation_hours || 0) + (salaryResult.paid_sick_hours || 0)) - summaryData.contractLimitHours).toFixed(2)} שעות
+              <span style={{ color: Number(totalCalculatedHours) > summaryData.contractLimitHours ? '#dd6b20' : '#4a5568', fontWeight: 'bold' }}>
+                {Math.max(0, Number(totalCalculatedHours) - summaryData.contractLimitHours).toFixed(2)} שעות
               </span>
             </div>
           </div>

@@ -3,26 +3,31 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 
-# ייבוא מהמודול המקומי
+# ייבוא חובה! בלעדיו הקובץ לא יכיר את הפונקציות מ-calculator.py
 from backend.calculator import calculate_shift_hours, calculate_monthly_salary
 
 app = FastAPI(title="Salary App API")
 
-# הגדרות CORS
+# הגדרות CORS מלאות המאשרות גישה מהדפדפן ומאתר ה-Firebase שלך
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://salary-app-d0a8d.web.app",  # כתובת הפרודקשן של ה-Frontend ב-Firebase
+        "http://localhost:5173",             # כתובת הפיתוח המקומית במחשב (Vite)
+        "*"                                  # מאפשר הכל כגיבוי למניעת חסימות דפדפן
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# מודלים
+# === מודל הנתונים לחישוב משמרת בודדת ===
 class ShiftCalculationRequest(BaseModel):
     start_time: str
     end_time: str
     is_weekend_or_holiday: Optional[bool] = False
 
+# === מודל הנתונים לחישוב השכר החודשי ===
 class SalaryCalculationRequest(BaseModel):
     total_hours: Optional[float] = 0.0
     regular_hours: Optional[float] = 0.0
@@ -39,6 +44,8 @@ class SalaryCalculationRequest(BaseModel):
     global_ot_hours: Optional[float] = 0.0
     global_ot_salary: Optional[float] = 0.0
     extra_ot_hourly_rate: Optional[float] = 0.0
+    
+    # --- שדות חדשים למשאבי אנוש ---
     vacation_days: Optional[float] = 0.0
     sick_dates: Optional[List[str]] = []
     sick_pay_policy: Optional[str] = 'law'
@@ -48,6 +55,7 @@ class SalaryCalculationRequest(BaseModel):
 def read_root():
     return {"status": "healthy", "message": "Salary App API is running smoothly!"}
 
+# === נתיב חדש: חישוב שעות של משמרת בודדת ===
 @app.post("/api/calculate-shift")
 def api_calculate_shift(data: ShiftCalculationRequest):
     try:
@@ -60,6 +68,7 @@ def api_calculate_shift(data: ShiftCalculationRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Shift calculation error: {str(e)}")
 
+# === נתיב: חישוב השכר החודשי המשולב (שעתי / יחסי גלובלי) ===
 @app.post("/api/calculate-monthly-net")
 def api_calculate_monthly_net(data: SalaryCalculationRequest):
     try:
@@ -70,7 +79,6 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
             "ot_150": data.ot_150_hours or 0.0
         }
 
-        # כאן אנחנו שולחים גם את הפרמטרים החדשים לפונקציה
         result = calculate_monthly_salary(
             hours_data=hours_dict,
             hourly_rate=data.hourly_rate or 0.0,
@@ -84,7 +92,9 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
             global_ot_hours=data.global_ot_hours or 0.0,
             global_ot_salary=data.global_ot_salary or 0.0,
             extra_ot_hourly_rate=data.extra_ot_hourly_rate or 0.0,
-            vacation_hours=data.vacation_days * data.standard_day_hours if data.vacation_days else 0.0,
+            
+            # --- העברת הנתונים החדשים לפונקציה ---
+            vacation_days=data.vacation_days or 0.0,
             sick_dates=data.sick_dates or [],
             sick_pay_policy=data.sick_pay_policy or 'law',
             standard_day_hours=data.standard_day_hours or 8.5
@@ -92,5 +102,4 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
         return result
         
     except Exception as e:
-        # זה ידפיס את השגיאה האמיתית ל-Logs של Render
         raise HTTPException(status_code=500, detail=f"Internal calculation error: {str(e)}")
