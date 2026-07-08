@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 
-# ייבוא מוחלט ומדויק שמתאים לסביבת הריצה ב-Render משורש הפרויקט
+# ייבוא חובה! בלעדיו הקובץ לא יכיר את הפונקציות מ-calculator.py
 from backend.calculator import calculate_shift_hours, calculate_monthly_salary
 
 app = FastAPI(title="Salary App API")
@@ -59,7 +59,6 @@ def read_root():
 @app.post("/api/calculate-shift")
 def api_calculate_shift(data: ShiftCalculationRequest):
     try:
-        # קריאה לפונקציית חישוב המשמרת מתוך calculator.py
         result = calculate_shift_hours(
             start_time_str=data.start_time,
             end_time_str=data.end_time,
@@ -73,7 +72,6 @@ def api_calculate_shift(data: ShiftCalculationRequest):
 @app.post("/api/calculate-monthly-net")
 def api_calculate_monthly_net(data: SalaryCalculationRequest):
     try:
-        # אריזת כל נתוני השעות לתוך מילון מסודר כפי שפונקציית החישוב מצפה לקבל
         hours_dict = {
             "total": data.total_hours or 0.0,
             "regular": data.regular_hours or data.total_hours or 0.0,
@@ -81,7 +79,6 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
             "ot_150": data.ot_150_hours or 0.0
         }
 
-        # הרצת פונקציית החישוב החודשית עם ערכי ברירת מחדל למניעת ערכי Null
         result = calculate_monthly_salary(
             hours_data=hours_dict,
             hourly_rate=data.hourly_rate or 0.0,
@@ -105,5 +102,4 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
         return result
         
     except Exception as e:
-        # הדפסת השגיאה המלאה ללוג של Render למניעת קריסה אנונימית
         raise HTTPException(status_code=500, detail=f"Internal calculation error: {str(e)}")
