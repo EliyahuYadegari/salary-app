@@ -3,7 +3,6 @@ import { db, auth } from '../firebase';
 import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 
 const MonthlySummary: React.FC = () => {
-  // ברירת מחדל - החודש הנוכחי
   const defaultMonth = new Date().toISOString().substring(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
 
@@ -38,7 +37,6 @@ const MonthlySummary: React.FC = () => {
         standardDayHours: 8.5
       };
 
-      // יצירת שם החודש בעברית לפי החודש שנבחר
       const [year, month] = selectedMonth.split('-');
       const selectedDate = new Date(Number(year), Number(month) - 1);
       const monthName = selectedDate.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
@@ -52,7 +50,6 @@ const MonthlySummary: React.FC = () => {
 
       querySnapshot.forEach((shiftDoc) => {
         const shift = shiftDoc.data();
-        // סינון חכם לפי החודש שהמשתמש בחר ב-UI
         if (shift.date && shift.date.startsWith(selectedMonth)) {
           if (shift.type === 'vacation') {
             vacationDays += 1;
@@ -108,7 +105,6 @@ const MonthlySummary: React.FC = () => {
     }
   };
 
-  // מריץ את החישוב כל פעם שהמשתמש משנה את החודש בבוחר!
   useEffect(() => {
     loadMonthlyDataAndCalculate();
   }, [selectedMonth]); 
@@ -121,11 +117,15 @@ const MonthlySummary: React.FC = () => {
     fontSize: '15px'
   };
 
+  // חישוב הסך הכללי לתצוגה (עבודה בפועל + ימי חופש/מחלה בשעות)
+  const totalCalculatedHours = salaryResult 
+    ? (summaryData.totalHours + (salaryResult.paid_vacation_hours || 0) + (salaryResult.paid_sick_hours || 0)).toFixed(2)
+    : summaryData.totalHours;
+
   return (
     <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '16px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', border: '1px solid #edf2f7' }}>
       <h3 style={{ color: '#2d3748', margin: '0 0 15px 0', textAlign: 'center' }}>📄 סימולציית תלוש חוזה גלובלי</h3>
       
-      {/* בוחר החודשים החדש! */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '20px', backgroundColor: '#f7fafc', padding: '10px', borderRadius: '8px' }}>
         <label style={{ fontWeight: 'bold', color: '#4a5568' }}>בחר חודש לתלוש:</label>
         <input 
@@ -152,24 +152,30 @@ const MonthlySummary: React.FC = () => {
           <div style={{ marginBottom: '25px', backgroundColor: '#f7fafc', padding: '15px', borderRadius: '10px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#4a5568' }}>📊 סיכום שעות מול חוזה</h4>
             <div style={rowStyle}>
-              <span>שעות עבודה בפועל:</span>
-              <span style={{ fontWeight: 'bold' }}>{summaryData.totalHours} שעות</span>
+              <span>שעות עבודה פיזיות:</span>
+              <span>{summaryData.totalHours} שעות</span>
             </div>
             
             {salaryResult.paid_vacation_hours > 0 && (
               <div style={rowStyle}>
                 <span>ערך שעות חופש ({summaryData.vacationDaysCount} ימים):</span>
-                <span style={{ color: '#805ad5', fontWeight: 'bold' }}>+{salaryResult.paid_vacation_hours} שעות</span>
+                <span style={{ color: '#805ad5' }}>+{salaryResult.paid_vacation_hours} שעות</span>
               </div>
             )}
             {salaryResult.paid_sick_hours > 0 && (
               <div style={rowStyle}>
                 <span>ערך שעות מחלה חוקי ({summaryData.sickDaysCount} ימים):</span>
-                <span style={{ color: '#e53e3e', fontWeight: 'bold' }}>+{salaryResult.paid_sick_hours} שעות</span>
+                <span style={{ color: '#e53e3e' }}>+{salaryResult.paid_sick_hours} שעות</span>
               </div>
             )}
 
-            <div style={rowStyle}>
+            {/* שורת סיכום שעות חדשה! */}
+            <div style={{ ...rowStyle, backgroundColor: '#edf2f7', padding: '10px', borderRadius: '6px', marginTop: '5px' }}>
+              <span style={{ fontWeight: 'bold', color: '#2d3748' }}>סה"כ שעות לחישוב השכר:</span>
+              <span style={{ fontWeight: 'bold', color: '#2d3748' }}>{total_hours_display} שעות</span>
+            </div>
+
+            <div style={{ ...rowStyle, marginTop: '10px' }}>
               <span>מכסת שעות החוזה הכוללת:</span>
               <span>{summaryData.contractLimitHours} שעות</span>
             </div>
