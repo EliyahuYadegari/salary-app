@@ -235,5 +235,5 @@ const MonthlySummary: React.FC = () => {
       )}
     </div>
   );
-
+}
 export default MonthlySummary;
