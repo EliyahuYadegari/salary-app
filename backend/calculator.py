@@ -54,9 +54,6 @@ def calculate_shift_hours(start_time_str: str, end_time_str: str, is_weekend_or_
     }
 
 def calculate_sick_leave_paid_hours(sick_dates: list, standard_day_hours: float = 8.5, sick_pay_policy: str = 'law') -> float:
-    """
-    מחשבת את כמות השעות לתשלום בגין ימי מחלה בהתאם לרצף ולחוק.
-    """
     if not sick_dates:
         return 0.0
 
@@ -143,14 +140,16 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
     hr_paid_hours = paid_sick_hours + paid_vacation_hours
 
     # --- עדכון שעות כולל לחישוב ברוטו ---
-    # סך כל השעות (עבודה בפועל + ימי חופש/מחלה בשכר)
     total_hours = hours_data.get("total", 0.0) + hr_paid_hours
     
     gross_salary = 0.0
     base_gross_for_deductions = 0.0
+    
+    # משתנים לשמירת נתוני השעות החריגות
+    extra_hours = 0.0
+    extra_hours_pay = 0.0
 
     if global_base_salary > 0:
-        # --- מודל שכר גלובלי משולב - חישוב יחסי ---
         if global_base_hours > 0:
             if total_hours <= global_base_hours:
                 gross_salary = (total_hours / global_base_hours) * global_base_salary
@@ -166,10 +165,9 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
                     else:
                         gross_salary += global_ot_salary
                         extra_hours = ot_worked - global_ot_hours
-                        gross_salary += extra_hours * extra_ot_hourly_rate
+                        extra_hours_pay = extra_hours * extra_ot_hourly_rate
+                        gross_salary += extra_hours_pay
     else:
-        # --- מודל שכר שעתי רגיל ---
-        # השעות לצורך חישוב ברוטו כוללות עבודה + שעות HR
         regular = hours_data.get("regular", hours_data.get("total", 0.0)) + hr_paid_hours
         ot_125 = hours_data.get("ot_125", 0.0)
         ot_150 = hours_data.get("ot_150", 0.0)
@@ -177,14 +175,11 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
         gross_salary = (regular * hourly_rate) + (ot_125 * hourly_rate * 1.25) + (ot_150 * hourly_rate * 1.5)
         base_gross_for_deductions = regular * hourly_rate
 
-    # הוספת דמי נסיעות
     gross_salary += travel_expenses
 
-    # חישוב הפרשות (פנסיה והשתלמות - מהבסיס בלבד)
     pension_deduction = base_gross_for_deductions * (pension_rate / 100.0)
     study_fund_deduction = base_gross_for_deductions * (study_fund_rate / 100.0)
 
-    # ניכויי חובה
     tax = calculate_income_tax(gross_salary, credit_points)
     btl_data = calculate_bituach_leumi(gross_salary)
 
@@ -194,8 +189,11 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
     return {
         "gross_salary": round(gross_salary, 2),
         "net_salary": round(net_salary, 2),
+        "total_calculated_hours": round(total_hours, 2), # <-- הנתון שחיפשנו!
         "paid_sick_hours": round(paid_sick_hours, 2),
         "paid_vacation_hours": round(paid_vacation_hours, 2),
+        "extra_hours": round(extra_hours, 2),
+        "extra_hours_pay": round(extra_hours_pay, 2),
         "deductions": {
             "income_tax": tax,
             "bituach_leumi": btl_data["bituach_leumi"],
