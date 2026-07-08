@@ -169,7 +169,7 @@ const MonthlySummary: React.FC = () => {
               </div>
             )}
 
-            {/* שורת סיכום שעות מתוקנת! */}
+            {/* שורת סיכום שעות מתוקנת */}
             <div style={{ ...rowStyle, backgroundColor: '#edf2f7', padding: '10px', borderRadius: '6px', marginTop: '5px' }}>
               <span style={{ fontWeight: 'bold', color: '#2d3748' }}>סה"כ שעות לחישוב השכר:</span>
               <span style={{ fontWeight: 'bold', color: '#2d3748' }}>{totalCalculatedHours} שעות</span>
@@ -181,8 +181,8 @@ const MonthlySummary: React.FC = () => {
             </div>
             <div style={rowStyle}>
               <span>שעות חריגות לתשלום נוסף:</span>
-              <span style={{ color: salaryResult.extra_hours > 0 ? '#dd6b20' : '#4a5568', fontWeight: 'bold' }}>
-                {salaryResult.extra_hours || 0} שעות
+              <span style={{ color: Number(totalCalculatedHours) > summaryData.contractLimitHours ? '#dd6b20' : '#4a5568', fontWeight: 'bold' }}>
+                {Math.max(0, Number(totalCalculatedHours) - summaryData.contractLimitHours).toFixed(2)} שעות
               </span>
             </div>
           </div>
@@ -235,6 +235,5 @@ const MonthlySummary: React.FC = () => {
       )}
     </div>
   );
-};
 
 export default MonthlySummary;
