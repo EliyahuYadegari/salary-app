@@ -169,10 +169,10 @@ const MonthlySummary: React.FC = () => {
               </div>
             )}
 
-            {/* שורת סיכום שעות חדשה! */}
+            {/* שורת סיכום שעות מתוקנת! */}
             <div style={{ ...rowStyle, backgroundColor: '#edf2f7', padding: '10px', borderRadius: '6px', marginTop: '5px' }}>
               <span style={{ fontWeight: 'bold', color: '#2d3748' }}>סה"כ שעות לחישוב השכר:</span>
-              <span style={{ fontWeight: 'bold', color: '#2d3748' }}>{total_hours_display} שעות</span>
+              <span style={{ fontWeight: 'bold', color: '#2d3748' }}>{totalCalculatedHours} שעות</span>
             </div>
 
             <div style={{ ...rowStyle, marginTop: '10px' }}>
