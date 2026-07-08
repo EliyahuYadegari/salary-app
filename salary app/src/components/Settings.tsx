@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-// הגדרת המבנה המפורש של ההגדרות עבור TypeScript (כדי למנוע שגיאות סוגי נתונים)
+// הגדרת המבנה המפורש של ההגדרות עבור TypeScript
 interface SettingsState {
   globalBaseHours: string | number;
   globalBaseSalary: string | number;
@@ -13,10 +13,15 @@ interface SettingsState {
   pensionRate: number;
   travelExpenses: number;
   studyFundRate: number;
+  
+  // -- שדות חדשים: משאבי אנוש, חופש ומחלה --
+  employmentStartDate: string;
+  yearlyVacationDays: number | string;
+  sickPayPolicy: string;
+  standardDayHours: number | string;
 }
 
 const Settings: React.FC = () => {
-  // שימוש ב-Interface שהגדרנו
   const [settings, setSettings] = useState<SettingsState>({
     globalBaseHours: '',
     globalBaseSalary: '',
@@ -26,7 +31,13 @@ const Settings: React.FC = () => {
     creditPoints: 2.25,
     pensionRate: 6,
     travelExpenses: 300,
-    studyFundRate: 0 
+    studyFundRate: 0,
+    
+    // -- ערכי ברירת מחדל לשדות החדשים --
+    employmentStartDate: '',
+    yearlyVacationDays: 12, // ברירת מחדל חוקית בסיסית
+    sickPayPolicy: 'law', // 'law' = לפי חוק, 'full' = מלא מהיום הראשון
+    standardDayHours: 8.5 // אורך יום עבודה תקני
   });
 
   useEffect(() => {
@@ -57,7 +68,7 @@ const Settings: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '20px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+    <div style={{ padding: '20px', backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', maxWidth: '600px', margin: '0 auto' }}>
       <h3 style={{ margin: '0 0 15px 0', color: '#2d3748' }}>⚙️ הגדרות חוזה שכר גלובלי</h3>
       
       <label>שעות בסיס גלובליות בחוזה (למשל 182):</label>
@@ -75,8 +86,29 @@ const Settings: React.FC = () => {
       <label>תעריף לכל שעה חריגה מעבר לחוזה (₪):</label>
       <input type="number" placeholder="טרם הוגדר" value={settings.extraOtHourlyRate} onChange={(e) => setSettings({...settings, extraOtHourlyRate: e.target.value === '' ? '' : Number(e.target.value)})} style={inputStyle} />
       
-      <hr style={{ border: '1px solid #edf2f7', margin: '15px 0' }} />
+      <hr style={{ border: '1px solid #edf2f7', margin: '20px 0' }} />
       
+      <h3 style={{ margin: '0 0 15px 0', color: '#2d3748' }}>⛱️ משאבי אנוש (חופש ומחלה)</h3>
+
+      <label>תאריך תחילת העסקה (לחישוב ותק וצבירה):</label>
+      <input type="date" value={settings.employmentStartDate} onChange={(e) => setSettings({...settings, employmentStartDate: e.target.value})} style={inputStyle} />
+
+      <label>מכסת ימי חופש שנתית בחוזה:</label>
+      <input type="number" value={settings.yearlyVacationDays} onChange={(e) => setSettings({...settings, yearlyVacationDays: e.target.value === '' ? '' : Number(e.target.value)})} style={inputStyle} />
+
+      <label>אורך יום עבודה תקני (בשעות, למשל 8.5):</label>
+      <input type="number" step="0.1" value={settings.standardDayHours} onChange={(e) => setSettings({...settings, standardDayHours: e.target.value === '' ? '' : Number(e.target.value)})} style={inputStyle} />
+
+      <label>מדיניות תשלום ימי מחלה:</label>
+      <select value={settings.sickPayPolicy} onChange={(e) => setSettings({...settings, sickPayPolicy: e.target.value})} style={inputStyle}>
+        <option value="law">על פי חוק (יום 1: 0%, יום 2-3: 50%, יום 4+: 100%)</option>
+        <option value="full">תשלום מלא (100%) מהיום הראשון</option>
+      </select>
+
+      <hr style={{ border: '1px solid #edf2f7', margin: '20px 0' }} />
+      
+      <h3 style={{ margin: '0 0 15px 0', color: '#2d3748' }}>📉 ניכויים והפרשות</h3>
+
       <label>נקודות זיכוי ממס הכנסה:</label>
       <input type="number" step="0.25" value={settings.creditPoints} onChange={(e) => setSettings({...settings, creditPoints: Number(e.target.value)})} style={inputStyle} />
       

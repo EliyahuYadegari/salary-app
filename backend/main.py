@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 # ייבוא מוחלט ומדויק שמתאים לסביבת הריצה ב-Render משורש הפרויקט
 from backend.calculator import calculate_shift_hours, calculate_monthly_salary
@@ -44,6 +44,12 @@ class SalaryCalculationRequest(BaseModel):
     global_ot_hours: Optional[float] = 0.0
     global_ot_salary: Optional[float] = 0.0
     extra_ot_hourly_rate: Optional[float] = 0.0
+    
+    # --- שדות חדשים למשאבי אנוש ---
+    vacation_days: Optional[float] = 0.0
+    sick_dates: Optional[List[str]] = []
+    sick_pay_policy: Optional[str] = 'law'
+    standard_day_hours: Optional[float] = 8.5
 
 @app.get("/")
 def read_root():
@@ -88,7 +94,13 @@ def api_calculate_monthly_net(data: SalaryCalculationRequest):
             global_base_salary=data.global_base_salary or 0.0,
             global_ot_hours=data.global_ot_hours or 0.0,
             global_ot_salary=data.global_ot_salary or 0.0,
-            extra_ot_hourly_rate=data.extra_ot_hourly_rate or 0.0
+            extra_ot_hourly_rate=data.extra_ot_hourly_rate or 0.0,
+            
+            # --- העברת הנתונים החדשים לפונקציה ---
+            vacation_days=data.vacation_days or 0.0,
+            sick_dates=data.sick_dates or [],
+            sick_pay_policy=data.sick_pay_policy or 'law',
+            standard_day_hours=data.standard_day_hours or 8.5
         )
         return result
         

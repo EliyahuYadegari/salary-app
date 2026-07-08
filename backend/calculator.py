@@ -53,6 +53,51 @@ def calculate_shift_hours(start_time_str: str, end_time_str: str, is_weekend_or_
         "total": round(diff, 2)
     }
 
+def calculate_sick_leave_paid_hours(sick_dates: list, standard_day_hours: float = 8.5, sick_pay_policy: str = 'law') -> float:
+    """
+    מחשבת את כמות השעות לתשלום בגין ימי מחלה בהתאם לרצף ולחוק.
+    """
+    if not sick_dates:
+        return 0.0
+
+    if sick_pay_policy == 'full':
+        return len(sick_dates) * standard_day_hours
+
+    try:
+        # מיון התאריכים כדי לזהות רצפים כרונולוגיים
+        sorted_dates = sorted([datetime.strptime(d, "%Y-%m-%d") for d in sick_dates])
+    except ValueError:
+        return 0.0
+
+    total_paid_hours = 0.0
+    streak = 1
+
+    for i in range(len(sorted_dates)):
+        if i == 0:
+            streak = 1
+        else:
+            diff = (sorted_dates[i] - sorted_dates[i-1]).days
+            # אם ההפרש הוא יום אחד, הרצף ממשיך.
+            # אם ההפרש הוא עד 3 ימים אבל היום הקודם היה חמישי או שישי - מחשיבים כרצף שדילג על סופ"ש.
+            if diff == 1:
+                streak += 1
+            elif diff <= 3 and sorted_dates[i-1].weekday() in [3, 4]:
+                streak += 1
+            else:
+                streak = 1 # התחיל רצף מחלה חדש
+
+        # חוק דמי מחלה:
+        if streak == 1:
+            paid_ratio = 0.0
+        elif streak in [2, 3]:
+            paid_ratio = 0.5
+        else:
+            paid_ratio = 1.0
+
+        total_paid_hours += standard_day_hours * paid_ratio
+
+    return total_paid_hours
+
 def calculate_income_tax(gross_salary: float, credit_points: float) -> float:
     tax = 0.0
     previous_bracket = 0.0
@@ -89,9 +134,23 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
                              pension_rate: float, travel_expenses: float, study_fund_rate: float = 0.0,
                              is_global_model: bool = False, global_base_hours: float = 182.0,
                              global_base_salary: float = 0.0, global_ot_hours: float = 0.0,
-                             global_ot_salary: float = 0.0, extra_ot_hourly_rate: float = 0.0) -> dict:
+                             global_ot_salary: float = 0.0, extra_ot_hourly_rate: float = 0.0,
+                             vacation_days: float = 0.0, sick_dates: list = None,
+                             sick_pay_policy: str = 'law', standard_day_hours: float = 8.5) -> dict:
 
-    total_hours = hours_data.get("total", 0.0)
+    if sick_dates is None:
+        sick_dates = []
+
+    # --- חישוב שעות משאבי אנוש (חופש ומחלה) ---
+    paid_sick_hours = calculate_sick_leave_paid_hours(sick_dates, standard_day_hours, sick_pay_policy)
+    paid_vacation_hours = vacation_days * standard_day_hours
+    
+    # סך שעות משאבי אנוש המשולמות
+    hr_paid_hours = paid_sick_hours + paid_vacation_hours
+
+    # עדכון סך השעות הכולל (עבודה + ימי חופש/מחלה בתשלום)
+    total_hours = hours_data.get("total", 0.0) + hr_paid_hours
+    
     gross_salary = 0.0
     base_gross_for_deductions = 0.0
 
@@ -99,7 +158,7 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
         # --- מודל שכר גלובלי משולב - חישוב יחסי ---
         if global_base_hours > 0:
             if total_hours <= global_base_hours:
-                # עבד פחות או בדיוק את שעות הבסיס - מקבל שכר יחסי בלבד
+                # עבד פחות או בדיוק את שעות הבסיס - מקבל שכר יחסי
                 gross_salary = (total_hours / global_base_hours) * global_base_salary
                 base_gross_for_deductions = gross_salary
             else:
@@ -120,7 +179,8 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
 
     else:
         # --- מודל שכר שעתי רגיל ---
-        regular = hours_data.get("regular", total_hours)
+        # השעות הרגילות מורכבות מהעבודה בפועל + ימי החופש/מחלה
+        regular = hours_data.get("regular", hours_data.get("total", 0.0)) + hr_paid_hours
         ot_125 = hours_data.get("ot_125", 0.0)
         ot_150 = hours_data.get("ot_150", 0.0)
 
@@ -144,6 +204,8 @@ def calculate_monthly_salary(hours_data: dict, hourly_rate: float, credit_points
     return {
         "gross_salary": round(gross_salary, 2),
         "net_salary": round(net_salary, 2),
+        "paid_sick_hours": round(paid_sick_hours, 2), # החזרנו את הנתון הזה כדי שתוכל להציג בתלוש!
+        "paid_vacation_hours": round(paid_vacation_hours, 2),
         "deductions": {
             "income_tax": tax,
             "bituach_leumi": btl_data["bituach_leumi"],

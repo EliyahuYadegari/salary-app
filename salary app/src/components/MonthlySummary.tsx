@@ -8,7 +8,9 @@ const MonthlySummary: React.FC = () => {
   const [summaryData, setSummaryData] = useState({
     totalHours: 0,
     contractLimitHours: 0,
-    currentMonthName: ''
+    currentMonthName: '',
+    vacationDaysCount: 0,
+    sickDaysCount: 0
   });
 
   const loadMonthlyDataAndCalculate = async () => {
@@ -27,7 +29,9 @@ const MonthlySummary: React.FC = () => {
         creditPoints: 2.25,
         pensionRate: 6,
         travelExpenses: 300,
-        studyFundRate: 0
+        studyFundRate: 0,
+        sickPayPolicy: 'law', // ברירת מחדל
+        standardDayHours: 8.5 // ברירת מחדל
       };
 
       const today = new Date();
@@ -38,10 +42,21 @@ const MonthlySummary: React.FC = () => {
       const querySnapshot = await getDocs(q);
 
       let monthTotalHours = 0;
+      let vacationDays = 0;
+      let sickDates: string[] = [];
+
       querySnapshot.forEach((shiftDoc) => {
         const shift = shiftDoc.data();
         if (shift.date && shift.date.startsWith(currentMonthStr)) {
-          monthTotalHours += shift.calculated?.total || 0;
+          // הפרדה בין משמרות עבודה לימי מחלה/חופש כדי למנוע כפילות בשעות
+          if (shift.type === 'vacation') {
+            vacationDays += 1;
+          } else if (shift.type === 'sick') {
+            sickDates.push(shift.date);
+          } else {
+            // משמרת עבודה רגילה
+            monthTotalHours += shift.calculated?.total || 0;
+          }
         }
       });
 
@@ -52,7 +67,9 @@ const MonthlySummary: React.FC = () => {
       setSummaryData({
         totalHours: Number(monthTotalHours.toFixed(2)),
         contractLimitHours: totalContractHours,
-        currentMonthName: monthName
+        currentMonthName: monthName,
+        vacationDaysCount: vacationDays,
+        sickDaysCount: sickDates.length
       });
 
       // קריאה לשרת ה-API האמיתי שלך ב-Render
@@ -69,7 +86,12 @@ const MonthlySummary: React.FC = () => {
           credit_points: Number(settings.creditPoints) || 2.25,
           pension_rate: Number(settings.pensionRate) || 6,
           travel_expenses: Number(settings.travelExpenses) || 0,
-          study_fund_rate: Number(settings.studyFundRate) || 0
+          study_fund_rate: Number(settings.studyFundRate) || 0,
+          // --- שדות חדשים למשאבי אנוש ---
+          vacation_days: vacationDays,
+          sick_dates: sickDates,
+          sick_pay_policy: settings.sickPayPolicy || 'law',
+          standard_day_hours: Number(settings.standardDayHours) || 8.5
         }),
       });
 
@@ -113,9 +135,24 @@ const MonthlySummary: React.FC = () => {
           <div style={{ marginBottom: '25px', backgroundColor: '#f7fafc', padding: '15px', borderRadius: '10px' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#4a5568' }}>📊 סיכום שעות מול חוזה</h4>
             <div style={rowStyle}>
-              <span>שעות שבוצעו בפועל החודש:</span>
+              <span>שעות עבודה בפועל:</span>
               <span style={{ fontWeight: 'bold' }}>{summaryData.totalHours} שעות</span>
             </div>
+            
+            {/* -- הצגת שעות מחלה וחופש -- */}
+            {salaryResult.paid_vacation_hours > 0 && (
+              <div style={rowStyle}>
+                <span>ערך שעות חופש ({summaryData.vacationDaysCount} ימים):</span>
+                <span style={{ color: '#805ad5', fontWeight: 'bold' }}>+{salaryResult.paid_vacation_hours} שעות</span>
+              </div>
+            )}
+            {salaryResult.paid_sick_hours > 0 && (
+              <div style={rowStyle}>
+                <span>ערך שעות מחלה חוקי ({summaryData.sickDaysCount} ימים):</span>
+                <span style={{ color: '#e53e3e', fontWeight: 'bold' }}>+{salaryResult.paid_sick_hours} שעות</span>
+              </div>
+            )}
+
             <div style={rowStyle}>
               <span>מכסת שעות החוזה הכוללת:</span>
               <span>{summaryData.contractLimitHours} שעות</span>
@@ -123,7 +160,7 @@ const MonthlySummary: React.FC = () => {
             <div style={rowStyle}>
               <span>שעות חריגות לתשלום נוסף:</span>
               <span style={{ color: salaryResult.extra_hours > 0 ? '#dd6b20' : '#4a5568', fontWeight: 'bold' }}>
-                {salaryResult.extra_hours} שעות
+                {salaryResult.extra_hours || 0} שעות
               </span>
             </div>
           </div>
@@ -146,18 +183,17 @@ const MonthlySummary: React.FC = () => {
             </div>
             <div style={rowStyle}>
               <span>דמי ביטוח לאומי:</span>
-              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.national_insurance} ₪</span>
+              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.national_insurance || salaryResult.deductions.bituach_leumi} ₪</span>
             </div>
             <div style={rowStyle}>
               <span>דמי ביטוח בריאות:</span>
-              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.health_tax} ₪</span>
+              <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.health_tax || salaryResult.deductions.health_insurance} ₪</span>
             </div>
             <div style={rowStyle}>
               <span>הפרשת פנסיה עובד (משכר בסיס):</span>
               <span style={{ color: '#e53e3e', direction: 'ltr' }}>-{salaryResult.deductions.pension} ₪</span>
             </div>
             
-            {/* הצגת שורת קרן ההשתלמות בצורה קבועה ובטוחה (ללא תנאי סינון חוסם) */}
             <div style={rowStyle}>
               <span>הפרשת קרן השתלמות עובד:</span>
               <span style={{ color: '#e53e3e', direction: 'ltr' }}>
